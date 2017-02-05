@@ -21,13 +21,56 @@ class SaintPeter {
     } else {
       this.logger = console;
     }
-    switch (String(config.dbType)) {
+    // fill in missing config parameters
+    if (typeof this.config.dbType === 'undefined') {
+      this.config.dbType = 'file';
+    }
+    if (typeof this.config.defaultUsername === 'undefined') {
+      this.config.defaultUsername = 'admin';
+    }
+    if (typeof this.config.defaultPassword === 'undefined') {
+      this.config.defaultPassword = 'admin';
+    }
+    if (typeof this.config.defaultGroup === 'undefined') {
+      this.config.defaultGroup = 'admin';
+    }
+    // instantiate the db backend
+    switch (String(this.config.dbType)) {
       case (String('file')):
-        this.authDB = new FileAuthDB(config);
+        this.authDB = new FileAuthDB(this.config);
         break;
       default:
         // TODO: handle default case
         this.authDB = new FileAuthDB({filename: './auth.json'});
+    }
+    // populate the db (if empty) with default user and group
+    this.initializeDB().catch((e) => {
+      this.logger.error(e.message);
+    });
+  }
+
+  /**
+   * If there are no users in the DB, create the default user
+   * The default user is created with a default password and added to a
+   * default group (which is created if it doesn't already exist)
+   */
+  async initializeDB () {
+    let defaultUsername = this.config.defaultUsername;
+    let defaultPassword = this.config.defaultPassword;
+    let defaultGroup = this.config.defaultGroup;
+    let users = await this.authDB.getUsers();
+    if (users.length <= 0) {
+      this.logger.info('Creating default user \'' + defaultUsername +
+        '\' with password \'' + defaultPassword + '\'');
+      await this.authDB.addUser(defaultUsername, defaultPassword);
+      let groups = await this.authDB.getGroups();
+      if (groups.indexOf(defaultGroup) < 0) {
+        this.logger.info('Creating default group \'' + defaultGroup + '\'');
+        await this.authDB.addGroup(defaultGroup);
+      }
+      this.logger.info('Adding user \'' + defaultUsername + '\' to group \'' +
+        defaultGroup + '\'');
+      await this.authDB.addUserToGroup(defaultUsername, defaultGroup);
     }
   }
 

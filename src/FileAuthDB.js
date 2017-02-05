@@ -13,12 +13,23 @@ function writeJSONFile (filename, data) {
 class FileAuthDB {
   constructor (config) {
     this.filename = config.filename;
-    this.fileContents = JSON.parse(fs.readFileSync(this.filename, 'utf8'));
+    try {
+      this.fileContents = JSON.parse(fs.readFileSync(this.filename, 'utf8'));
+    } catch (e) {
+      // unable to read file, create an empty db
+      this.fileContents = {};
+    }
+    // create the 'users' table if it doesn't exist
+    if (!('users' in this.fileContents)) {
+      this.fileContents.users = {};
+    }
+    // create the 'groups' table if it doesn't exist
+    if (!('groups' in this.fileContents)) {
+      this.fileContents.groups = {};
+    }
   }
 
   async authenticateUser (username, password) {
-    console.log(username, password);
-    console.log(username in this.fileContents.users);
     return username in this.fileContents.users &&
       await PasswordHandler.verifyPassword(password, this.fileContents.users[username].password);
   }
@@ -40,7 +51,6 @@ class FileAuthDB {
       return false;
     }
     let combinedHash = await PasswordHandler.hashPassword(password);
-    // console.log(username + ':' + password + ' => ' + combinedHash);
     this.fileContents.users[username] = {
       username: username,
       password: combinedHash,
@@ -80,7 +90,6 @@ class FileAuthDB {
     if (!(username in this.fileContents.users)) {
       throw new Error('User doesn\'t exist');
     }
-    console.log(group + ' in ' + JSON.stringify(this.fileContents.users[username].groups));
     if (this.fileContents.users[username].groups.indexOf(group) < 0) {
       this.fileContents.users[username].groups.push(group);
     }

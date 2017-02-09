@@ -1,7 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var FileAuthDB = require('./src/FileAuthDB');
-var JWT = require('./src/JWT');
+var jwt = require('./src/jwt');
 
 /**
  * Wrap a function returning a promise (such as async functions)
@@ -14,6 +14,17 @@ let jwtVerifyOptions = {
 };
 
 class SaintPeter {
+  /**
+   * @param config an object containing the following fields:
+   * - dbType: one of mariadb, sqlite, file
+   * - defaultUsername: user created if auth db is empty
+   * - defaultPassword: password assigned to the default user
+   * - defaultGroup: group assigned to the default user
+   * - tokenLifetime: validity period of generated tokens
+   * - tokenIdleTimeout: how long after a token has expired it can be renewed
+   * @param logger a logger that should provide the methods info and error.
+   * Defaults to console
+   */
   constructor (config, logger) {
     this.config = config;
     if (logger) {
@@ -33,6 +44,12 @@ class SaintPeter {
     }
     if (typeof this.config.defaultGroup === 'undefined') {
       this.config.defaultGroup = 'admin';
+    }
+    if (typeof this.config.tokenLifetime === 'undefined') {
+      this.config.tokenLifetime = 60 * 60;
+    }
+    if (typeof this.config.tokenIdleTimeout === 'undefined') {
+      this.config.tokenIdleTimeout = 60 * 60;
     }
     // instantiate the db backend
     switch (String(this.config.dbType)) {
@@ -103,16 +120,70 @@ class SaintPeter {
       }
 
       let groups = await this.authDB.getUserGroups(username);
-      let token = await JWT.encodeToken({
-        exp: Math.floor(Date.now() / 1000) + (60 * 60),
+      let expirationDate = Math.floor(Date.now() / 1000) + (60 * 60);
+      let renewalExpirationDate = expirationDate + 60 * 60;
+      let token = await jwt.encodeToken({
+        exp: expirationDate,
+        renewalExpirationDate: renewalExpirationDate,
         username: username,
         groups: groups
       }, this.config.jwtSecret, {algorithm: 'HS256'});
 
       res.json({
         success: true,
-        token: token
+        token: token,
+        username: username,
+        groups: groups,
+        tokenExpirationDate: expirationDate
       });
+    });
+  }
+
+  renewToken () {
+    let router = express.Router();
+    router.use(bodyParser.json(), this.renewTokenParsedRequest());
+    return router;
+  }
+
+  renewTokenParsedRequest () {
+    return wrapAsync(async (req, res) => {
+      try {
+        let decodedOldToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret,
+          Object.assign({}, jwtVerifyOptions, {ignoreExpiration: true}));
+        console.log(decodedOldToken.renewalExpirationDate,
+        (new Date()).getTime() / 1000);
+        if (decodedOldToken.renewalExpirationDate < (new Date()).getTime() / 1000) {
+          throw new Error('Expired token');
+        }
+
+        let username = decodedOldToken.username;
+        // we could get the groups from the token, but we take this chance toupdate them
+        let groups = await this.authDB.getUserGroups(username);
+        let expirationDate = Math.floor(Date.now() / 1000) +
+          this.config.tokenLifetime;
+        let renewalExpirationDate = expirationDate +
+          this.config.tokenIdleTimeout;
+        let token = await jwt.encodeToken({
+          exp: expirationDate,
+          renewalExpirationDate: renewalExpirationDate,
+          username: username,
+          groups: groups
+        }, this.config.jwtSecret, {algorithm: 'HS256'});
+
+        res.json({
+          success: true,
+          token: token,
+          username: username,
+          groups: groups,
+          tokenExpirationDate: expirationDate
+        });
+      } catch (e) {
+        console.log(e.message);
+        res.status(401).json({
+          success: false,
+          message: 'Expired token'
+        });
+      }
     });
   }
 
@@ -123,7 +194,7 @@ class SaintPeter {
     let router = express.Router();
     router.use(wrapAsync(async (req, res, next) => {
       try {
-        await JWT.decodeToken(req, this.config.jwtSecret, jwtVerifyOptions);
+        await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
         next();
       } catch (e) {
         res.status(403).json({
@@ -138,7 +209,7 @@ class SaintPeter {
   allowUsers (users) {
     return wrapAsync(async (req, res, next) => {
       try {
-        let decodedToken = await JWT.decodeToken(req, this.config.jwtSecret, jwtVerifyOptions);
+        let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
         if (users.indexOf(decodedToken.username) < 0) {
           throw new Error('Forbidden');
         }
@@ -155,7 +226,7 @@ class SaintPeter {
   allowGroups (groups) {
     return wrapAsync(async (req, res, next) => {
       try {
-        let decodedToken = await JWT.decodeToken(req, this.config.jwtSecret, jwtVerifyOptions);
+        let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
         let groups = await this.authDB.getGroups();
         if (!('groups' in decodedToken)) {
           throw new Error('No groups in token');

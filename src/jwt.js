@@ -1,6 +1,24 @@
 var jwt = require('jsonwebtoken');
 
 /**
+ * This is a wrapper for jwt.verify(...) that returns a promise
+ * and takes its same arguments (except for the callback)
+ * @param token the request
+ * @param jwtSecret secret to be used for decoding the token
+ * @param options to be passed to jwt.verify(...)
+ */
+function decodeToken (token, jwtSecret, options) {
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, jwtSecret, options, (err, decodedToken) => {
+      if (err) {
+        return reject(err);
+      }
+      return resolve(decodedToken);
+    });
+  });
+}
+
+/**
  * Given a request and a secret try to decode the token.
  * This function takes the same arguments as jwt.verify(...),
  * except for the first argument (reqest instead of the token)
@@ -8,7 +26,7 @@ var jwt = require('jsonwebtoken');
  * @param jwtSecret secret to be used for decoding the token
  * @param options to be passed to jwt.verify(...)
  */
-function decodeToken (req, jwtSecret, options) {
+function decodeTokenHeader (req, jwtSecret, options) {
   return new Promise((resolve, reject) => {
     let authHeader = req.get('Authorization');
     if (authHeader) {
@@ -25,11 +43,9 @@ function decodeToken (req, jwtSecret, options) {
         return;
       }
       // if we made it here we failed parsing the error
-      reject({
-        name: 'AuthorizationHeaderParseError',
-        message: 'error parsing Authorization header'
-      });
+      throw new Error('Error parsing Authorization header');
     }
+    throw new Error('No Authorization header');
   });
 }
 
@@ -49,5 +65,6 @@ function encodeToken (token, jwtSecret, options) {
   });
 }
 
-exports.encodeToken = encodeToken;
 exports.decodeToken = decodeToken;
+exports.decodeTokenHeader = decodeTokenHeader;
+exports.encodeToken = encodeToken;

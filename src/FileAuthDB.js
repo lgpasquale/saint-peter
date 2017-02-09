@@ -35,6 +35,8 @@ class FileAuthDB {
   }
 
   async getUserGroups (username) {
+    console.log('username: ' + username);
+    console.log(JSON.stringify(this.fileContents));
     return this.fileContents.users[username].groups;
   }
 

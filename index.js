@@ -120,13 +120,15 @@ class SaintPeter {
       }
 
       let groups = await this.authDB.getUserGroups(username);
+      let email = await this.authDB.getUserEmail(username);
       let expirationDate = Math.floor(Date.now() / 1000) + (60 * 60);
       let renewalExpirationDate = expirationDate + 60 * 60;
       let token = await jwt.encodeToken({
         exp: expirationDate,
         renewalExpirationDate: renewalExpirationDate,
         username: username,
-        groups: groups
+        groups: groups,
+        email: email
       }, this.config.jwtSecret, {algorithm: 'HS256'});
 
       res.json({
@@ -134,6 +136,7 @@ class SaintPeter {
         token: token,
         username: username,
         groups: groups,
+        email: email,
         tokenExpirationDate: expirationDate
       });
     });
@@ -159,6 +162,7 @@ class SaintPeter {
         let username = decodedOldToken.username;
         // we could get the groups from the token, but we take this chance toupdate them
         let groups = await this.authDB.getUserGroups(username);
+        let email = await this.authDB.getUserEmail(username);
         let expirationDate = Math.floor(Date.now() / 1000) +
           this.config.tokenLifetime;
         let renewalExpirationDate = expirationDate +
@@ -167,7 +171,8 @@ class SaintPeter {
           exp: expirationDate,
           renewalExpirationDate: renewalExpirationDate,
           username: username,
-          groups: groups
+          groups: groups,
+          email: email
         }, this.config.jwtSecret, {algorithm: 'HS256'});
 
         res.json({
@@ -175,6 +180,7 @@ class SaintPeter {
           token: token,
           username: username,
           groups: groups,
+          email: email,
           tokenExpirationDate: expirationDate
         });
       } catch (e) {
@@ -328,6 +334,59 @@ class SaintPeter {
     let router = express.Router();
     router.use(bodyParser.json(), wrapAsync(async (req, res) => {
       let success = await this.authDB.removeUserFromGroup(req.body.username, req.body.group);
+      res.status(success ? 200 : 409).json({
+        success: success
+      });
+    }));
+    return router;
+  }
+
+  setUserPassword () {
+    let router = express.Router();
+    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+      let username = req.body.username;
+      let oldPassword = req.body.oldPassword;
+      let newPassword = req.body.newPassword;
+      try {
+        let success = await this.authDB.authenticateUser(username, oldPassword);
+        if (!success) {
+          // invalid username or password. all other errors should throw
+          // an exception and are catched by the next block
+          res.status(401).json({
+            success: false
+          });
+          return;
+        }
+      } catch (e) {
+        // some error occurred while authenticating the user
+        this.logger.error(e.message);
+        return res.status(401).json({
+          success: false
+        });
+      }
+
+      let success = true;
+      try {
+        await this.authDB.setUserPassword(username, newPassword);
+      } catch (e) {
+        success = false;
+      }
+      res.status(success ? 200 : 409).json({
+        success: success
+      });
+    }));
+    return router;
+  }
+
+  setUserEmail () {
+    let router = express.Router();
+    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+      let success = true;
+      try {
+        await this.authDB.setUserEmail(req.body.username, req.body.email);
+      } catch (e) {
+        success = false;
+      }
       res.status(success ? 200 : 409).json({
         success: success
       });

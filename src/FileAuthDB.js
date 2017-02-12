@@ -35,9 +35,22 @@ class FileAuthDB {
   }
 
   async getUserGroups (username) {
-    console.log('username: ' + username);
-    console.log(JSON.stringify(this.fileContents));
     return this.fileContents.users[username].groups;
+  }
+
+  async getUserEmail (username) {
+    return this.fileContents.users[username].email;
+  }
+
+  async setUserEmail (username, email) {
+    this.fileContents.users[username].email = email;
+    await writeJSONFile(this.filename, this.fileContents);
+  }
+
+  async setUserPassword (username, password) {
+    let combinedHash = await PasswordHandler.hashPassword(password);
+    this.fileContents.users[username].password = combinedHash;
+    await writeJSONFile(this.filename, this.fileContents);
   }
 
   async getUsers () {
@@ -56,7 +69,9 @@ class FileAuthDB {
     this.fileContents.users[username] = {
       username: username,
       password: combinedHash,
-      groups: []};
+      groups: [],
+      email: ''
+    };
     await writeJSONFile(this.filename, this.fileContents);
     return true;
   }

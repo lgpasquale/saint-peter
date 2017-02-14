@@ -42,8 +42,26 @@ class FileAuthDB {
     return this.fileContents.users[username].email;
   }
 
+  async getUserFirstName (username) {
+    return this.fileContents.users[username].firstName;
+  }
+
+  async getUserLastName (username) {
+    return this.fileContents.users[username].lastName;
+  }
+
   async setUserEmail (username, email) {
     this.fileContents.users[username].email = email;
+    await writeJSONFile(this.filename, this.fileContents);
+  }
+
+  async setUserFirstName (username, firstName) {
+    this.fileContents.users[username].firstName = firstName;
+    await writeJSONFile(this.filename, this.fileContents);
+  }
+
+  async setUserLastName (username, lastName) {
+    this.fileContents.users[username].lastName = lastName;
     await writeJSONFile(this.filename, this.fileContents);
   }
 
@@ -70,7 +88,9 @@ class FileAuthDB {
       username: username,
       password: combinedHash,
       groups: [],
-      email: ''
+      email: '',
+      firstName: '',
+      lastName: ''
     };
     await writeJSONFile(this.filename, this.fileContents);
     return true;

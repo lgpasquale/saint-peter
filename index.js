@@ -121,6 +121,8 @@ class SaintPeter {
 
       let groups = await this.authDB.getUserGroups(username);
       let email = await this.authDB.getUserEmail(username);
+      let firstName = await this.authDB.getUserFirstName(username);
+      let lastName = await this.authDB.getUserLastName(username);
       let expirationDate = Math.floor(Date.now() / 1000) + (60 * 60);
       let renewalExpirationDate = expirationDate + 60 * 60;
       let token = await jwt.encodeToken({
@@ -128,7 +130,9 @@ class SaintPeter {
         renewalExpirationDate: renewalExpirationDate,
         username: username,
         groups: groups,
-        email: email
+        email: email,
+        firstName: firstName,
+        lastName: lastName
       }, this.config.jwtSecret, {algorithm: 'HS256'});
 
       res.json({
@@ -137,6 +141,8 @@ class SaintPeter {
         username: username,
         groups: groups,
         email: email,
+        firstName: firstName,
+        lastName: lastName,
         tokenExpirationDate: expirationDate
       });
     });
@@ -163,6 +169,8 @@ class SaintPeter {
         // we could get the groups from the token, but we take this chance toupdate them
         let groups = await this.authDB.getUserGroups(username);
         let email = await this.authDB.getUserEmail(username);
+        let firstName = await this.authDB.getUserFirstName(username);
+        let lastName = await this.authDB.getUserLastName(username);
         let expirationDate = Math.floor(Date.now() / 1000) +
           this.config.tokenLifetime;
         let renewalExpirationDate = expirationDate +
@@ -172,7 +180,9 @@ class SaintPeter {
           renewalExpirationDate: renewalExpirationDate,
           username: username,
           groups: groups,
-          email: email
+          email: email,
+          firstName: firstName,
+          lastName: lastName
         }, this.config.jwtSecret, {algorithm: 'HS256'});
 
         res.json({
@@ -181,6 +191,8 @@ class SaintPeter {
           username: username,
           groups: groups,
           email: email,
+          firstName: firstName,
+          lastName: lastName,
           tokenExpirationDate: expirationDate
         });
       } catch (e) {
@@ -262,7 +274,7 @@ class SaintPeter {
   getUsers () {
     let router = express.Router();
     router.use(wrapAsync(async (req, res) => {
-      res.send(await this.authDB.getUsers());
+      res.json(await this.authDB.getUsers());
     }));
     return router;
   }
@@ -270,7 +282,7 @@ class SaintPeter {
   getGroups () {
     let router = express.Router();
     router.use(wrapAsync(async (req, res) => {
-      res.send(await this.authDB.getGroups());
+      res.json(await this.authDB.getGroups());
     }));
     return router;
   }

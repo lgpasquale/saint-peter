@@ -290,7 +290,13 @@ class SaintPeter {
   addUser () {
     let router = express.Router();
     router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let success = await this.authDB.addUser(req.body.username, req.body.password);
+      let success = true;
+      try {
+        success = await this.authDB.addUser(req.body.username, req.body.password);
+      } catch (e) {
+        this.logger.error(e.message);
+        success = false;
+      }
       res.status(success ? 200 : 409).json({
         success: success
       });
@@ -301,7 +307,13 @@ class SaintPeter {
   deleteUser () {
     let router = express.Router();
     router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let success = await this.authDB.deleteUser(req.body.username);
+      let success = true;
+      try {
+        success = await this.authDB.deleteUser(req.body.username);
+      } catch (e) {
+        success = false;
+        this.logger.error(e.message);
+      }
       res.status(success ? 200 : 409).json({
         success: success
       });
@@ -402,6 +414,29 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
+    }));
+    return router;
+  }
+
+  getUsersInfo () {
+    let router = express.Router();
+    router.use(wrapAsync(async (req, res) => {
+      let success = true;
+      let usersInfo = {};
+      try {
+        let users = await this.authDB.getUsers();
+        for (let username of users) {
+          usersInfo[username] = {};
+          usersInfo[username].username = username;
+          usersInfo[username].email = await this.authDB.getUserEmail(username);
+          usersInfo[username].firstName = await this.authDB.getUserFirstName(username);
+          usersInfo[username].lastName = await this.authDB.getUserLastName(username);
+          usersInfo[username].groups = await this.authDB.getUserGroups(username);
+        }
+      } catch (e) {
+        success = false;
+      }
+      res.status(success ? 200 : 409).json(usersInfo);
     }));
     return router;
   }

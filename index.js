@@ -440,6 +440,34 @@ class SaintPeter {
     }));
     return router;
   }
+
+  setUserInfo () {
+    let router = express.Router();
+    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+      let success = true;
+      try {
+        if (req.body.firstName) {
+          await this.authDB.setUserFirstName(req.body.username, req.body.firstName);
+        }
+        if (req.body.lastName) {
+          await this.authDB.setUserLastName(req.body.username, req.body.lastName);
+        }
+        if (req.body.email) {
+          await this.authDB.setUserEmail(req.body.username, req.body.email);
+        }
+        if (req.body.groups) {
+          await this.authDB.setUserGroups(req.body.username, req.body.groups);
+        }
+      } catch (e) {
+        success = false;
+      }
+      res.status(success ? 200 : 409).json({
+        success: success
+      });
+    }));
+    return router;
+  }
+
 }
 
 module.exports = SaintPeter;

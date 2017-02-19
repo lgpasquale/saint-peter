@@ -50,6 +50,11 @@ class FileAuthDB {
     return this.fileContents.users[username].lastName;
   }
 
+  async setUserGroups (username, groups) {
+    this.fileContents.users[username].groups = groups;
+    await writeJSONFile(this.filename, this.fileContents);
+  }
+
   async setUserEmail (username, email) {
     this.fileContents.users[username].email = email;
     await writeJSONFile(this.filename, this.fileContents);

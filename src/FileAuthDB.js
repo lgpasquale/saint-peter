@@ -110,6 +110,16 @@ class FileAuthDB {
     return true;
   }
 
+  async renameUser (username, newUsername) {
+    if (!(username in this.fileContents.users)) {
+      throw new Error('Cannot rename user ' + username + 'because it doesn\'t exist');
+    }
+    Object.assign(this.fileContents.users[newUsername],
+      this.fileContents.users[username]);
+    delete this.fileContents.users[username];
+    await writeJSONFile(this.filename, this.fileContents);
+  }
+
   async addGroup (group) {
     if (group in this.fileContents.groups) {
       return false;

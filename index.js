@@ -402,6 +402,25 @@ class SaintPeter {
     return router;
   }
 
+  resetUserPassword () {
+    let router = express.Router();
+    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+      let username = req.body.username;
+      let password = req.body.password;
+
+      let success = true;
+      try {
+        await this.authDB.setUserPassword(username, password);
+      } catch (e) {
+        success = false;
+      }
+      res.status(success ? 200 : 409).json({
+        success: success
+      });
+    }));
+    return router;
+  }
+
   setUserEmail () {
     let router = express.Router();
     router.use(bodyParser.json(), wrapAsync(async (req, res) => {
@@ -445,18 +464,23 @@ class SaintPeter {
     let router = express.Router();
     router.use(bodyParser.json(), wrapAsync(async (req, res) => {
       let success = true;
+      let username = req.body.username;
       try {
-        if (req.body.firstName) {
-          await this.authDB.setUserFirstName(req.body.username, req.body.firstName);
+        if (username !== req.body.userInfo.username) {
+          this.authDB.renameUser(username, req.body.userInfo.username);
+          username = req.body.userInfo.username;
         }
-        if (req.body.lastName) {
-          await this.authDB.setUserLastName(req.body.username, req.body.lastName);
+        if (req.body.userInfo.firstName) {
+          await this.authDB.setUserFirstName(username, req.body.userInfo.firstName);
         }
-        if (req.body.email) {
-          await this.authDB.setUserEmail(req.body.username, req.body.email);
+        if (req.body.userInfo.lastName) {
+          await this.authDB.setUserLastName(username, req.body.userInfo.lastName);
         }
-        if (req.body.groups) {
-          await this.authDB.setUserGroups(req.body.username, req.body.groups);
+        if (req.body.userInfo.email) {
+          await this.authDB.setUserEmail(username, req.body.userInfo.email);
+        }
+        if (req.body.userInfo.groups) {
+          await this.authDB.setUserGroups(username, req.body.userInfo.groups);
         }
       } catch (e) {
         success = false;

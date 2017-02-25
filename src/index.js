@@ -1,7 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var FileAuthDB = require('./src/FileAuthDB');
-var jwt = require('./src/jwt');
+var FileAuthDB = require('./FileAuthDB');
+var jwt = require('./jwt');
 
 /**
  * Wrap a function returning a promise (such as async functions)

@@ -426,6 +426,12 @@ class SaintPeter {
     router.use(bodyParser.json(), wrapAsync(async (req, res) => {
       let success = true;
       try {
+        let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
+        if (decodedToken.username !== req.body.username) {
+          // the user making the request has to match the user whose password
+          // we are trying to change
+          throw new Error('Forbidden');
+        }
         await this.authDB.setUserEmail(req.body.username, req.body.email);
       } catch (e) {
         success = false;
@@ -492,6 +498,25 @@ class SaintPeter {
     return router;
   }
 
+  defaultRouters (adminGroups = ['admin']) {
+    let router = express.Router();
+    router.post('/authenticate', this.authenticate());
+    router.post('/renew-token', this.renewToken());
+    router.post('/add-user', this.allowGroups(adminGroups), this.addUser());
+    router.post('/delete-user', this.allowGroups(adminGroups), this.deleteUser());
+    router.post('/add-group', this.allowGroups(adminGroups), this.addUser());
+    router.post('/delete-group', this.allowGroups(adminGroups), this.deleteUser());
+    router.post('/add-user-to-group', this.allowGroups(adminGroups), this.addUserToGroup());
+    router.post('/remove-user-from-group', this.allowGroups(adminGroups), this.removeUserFromGroup());
+    router.post('/set-user-email', this.setUserEmail());
+    router.post('/set-user-password', this.setUserPassword());
+    router.post('/reset-user-password', this.allowGroups(adminGroups), this.resetUserPassword());
+    router.post('/set-user-info', this.allowGroups(adminGroups), this.setUserInfo());
+    router.get('/get-users-info', this.allowGroups(adminGroups), this.getUsersInfo());
+    router.get('/get-users', this.allowGroups(adminGroups), this.getUsers());
+    router.get('/get-groups', this.allowGroups(adminGroups), this.getGroups());
+    return router;
+  }
 }
 
 module.exports = SaintPeter;

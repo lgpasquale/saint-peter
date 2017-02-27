@@ -47,9 +47,13 @@ class SaintPeter {
     }
     if (typeof this.config.tokenLifetime === 'undefined') {
       this.config.tokenLifetime = 60 * 60;
+    } else {
+      this.config.tokenLifetime = Number(this.config.tokenLifetime);
     }
     if (typeof this.config.tokenIdleTimeout === 'undefined') {
       this.config.tokenIdleTimeout = 60 * 60;
+    } else {
+      this.config.tokenIdleTimeout = Number(this.config.tokenIdleTimeout);
     }
     // instantiate the db backend
     switch (String(this.config.dbType)) {
@@ -123,8 +127,10 @@ class SaintPeter {
       let email = await this.authDB.getUserEmail(username);
       let firstName = await this.authDB.getUserFirstName(username);
       let lastName = await this.authDB.getUserLastName(username);
-      let expirationDate = Math.floor(Date.now() / 1000) + (60 * 60);
-      let renewalExpirationDate = expirationDate + 60 * 60;
+      let expirationDate = Math.floor(Date.now() / 1000) +
+        this.config.tokenLifetime;
+      let renewalExpirationDate = expirationDate +
+        this.config.tokenIdleTimeout;
       let token = await jwt.encodeToken({
         exp: expirationDate,
         renewalExpirationDate: renewalExpirationDate,

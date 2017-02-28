@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var FileAuthDB = require('./FileAuthDB');
+var SQLAuthDB = require('./SQLAuthDB');
 var jwt = require('./jwt');
 
 /**
@@ -32,6 +33,10 @@ class SaintPeter {
     } else {
       this.logger = console;
     }
+    // jwtSecret is mandatory (we don't want to provide a default one)
+    if (!this.config.jwtSecret) {
+      throw new Error('No jwtSecret provided in config');
+    }
     // fill in missing config parameters
     if (typeof this.config.dbType === 'undefined') {
       this.config.dbType = 'file';
@@ -57,17 +62,21 @@ class SaintPeter {
     }
     // instantiate the db backend
     switch (String(this.config.dbType)) {
+      case 'sqlite':
+      case 'mysql':
+      case 'mariadb':
+      case 'postgresql':
+        this.authDB = new SQLAuthDB(this.config);
+        break;
       case (String('file')):
         this.authDB = new FileAuthDB(this.config);
         break;
       default:
-        // TODO: handle default case
-        this.authDB = new FileAuthDB({filename: './auth.json'});
+        this.authDB = new SQLAuthDB({
+          dbType: 'sqlite',
+          storage: 'authdb.sqlite'
+        });
     }
-    // populate the db (if empty) with default user and group
-    this.initializeDB().catch((e) => {
-      this.logger.error(e.message);
-    });
   }
 
   /**
@@ -76,6 +85,9 @@ class SaintPeter {
    * default group (which is created if it doesn't already exist)
    */
   async initializeDB () {
+    // Create tables if they don't exist
+    this.authDB.initialize();
+    // Create default user if none exist
     let defaultUsername = this.config.defaultUsername;
     let defaultPassword = this.config.defaultPassword;
     let defaultGroup = this.config.defaultGroup;
@@ -140,7 +152,6 @@ class SaintPeter {
         firstName: firstName,
         lastName: lastName
       }, this.config.jwtSecret, {algorithm: 'HS256'});
-
       res.json({
         success: true,
         token: token,
@@ -165,8 +176,6 @@ class SaintPeter {
       try {
         let decodedOldToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret,
           Object.assign({}, jwtVerifyOptions, {ignoreExpiration: true}));
-        console.log(decodedOldToken.renewalExpirationDate,
-        (new Date()).getTime() / 1000);
         if (decodedOldToken.renewalExpirationDate < (new Date()).getTime() / 1000) {
           throw new Error('Expired token');
         }
@@ -202,7 +211,6 @@ class SaintPeter {
           tokenExpirationDate: expirationDate
         });
       } catch (e) {
-        console.log(e.message);
         res.status(401).json({
           success: false,
           message: 'Expired token'

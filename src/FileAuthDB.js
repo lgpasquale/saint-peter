@@ -19,6 +19,9 @@ class FileAuthDB {
       // unable to read file, create an empty db
       this.fileContents = {};
     }
+  }
+
+  async initialize () {
     // create the 'users' table if it doesn't exist
     if (!('users' in this.fileContents)) {
       this.fileContents.users = {};

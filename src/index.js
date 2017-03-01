@@ -487,7 +487,7 @@ class SaintPeter {
       let username = req.body.username;
       try {
         if (username !== req.body.userInfo.username) {
-          this.authDB.renameUser(username, req.body.userInfo.username);
+          await this.authDB.renameUser(username, req.body.userInfo.username);
           username = req.body.userInfo.username;
         }
         if (req.body.userInfo.firstName) {

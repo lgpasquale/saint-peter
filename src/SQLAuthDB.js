@@ -241,7 +241,7 @@ class SQLAuthDB {
   }
 
   async deleteUser (username) {
-    let user = this.User.findOne({
+    let user = await this.User.findOne({
       where: {username: username}
     });
     if (!user) {
@@ -254,7 +254,7 @@ class SQLAuthDB {
   }
 
   async renameUser (username, newUsername) {
-    let user = this.User.findOne({
+    let user = await this.User.findOne({
       where: {username: username}
     });
     if (!user) {
@@ -279,7 +279,7 @@ class SQLAuthDB {
   }
 
   async deleteGroup (groupname) {
-    let group = this.Group.findOne({
+    let group = await this.Group.findOne({
       where: {groupname: groupname}
     });
     if (!groupname) {

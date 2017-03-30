@@ -38,9 +38,6 @@ class SaintPeter {
       throw new Error('No jwtSecret provided in config');
     }
     // fill in missing config parameters
-    if (typeof this.config.dbType === 'undefined') {
-      this.config.dbType = 'file';
-    }
     if (typeof this.config.defaultUsername === 'undefined') {
       this.config.defaultUsername = 'admin';
     }
@@ -61,21 +58,23 @@ class SaintPeter {
       this.config.tokenIdleTimeout = Number(this.config.tokenIdleTimeout);
     }
     // instantiate the db backend
-    switch (String(this.config.dbType)) {
-      case 'sqlite':
-      case 'mysql':
-      case 'mariadb':
-      case 'postgresql':
-        this.authDB = new SQLAuthDB(this.config);
-        break;
-      case (String('file')):
-        this.authDB = new FileAuthDB(this.config);
-        break;
-      default:
-        this.authDB = new SQLAuthDB({
-          dbType: 'sqlite',
-          storage: 'authdb.sqlite'
-        });
+    if (this.config.dbType) {
+      switch (String(this.config.dbType)) {
+        case 'sqlite':
+        case 'mysql':
+        case 'mariadb':
+        case 'postgresql':
+          this.authDB = new SQLAuthDB(this.config);
+          break;
+        case (String('file')):
+          this.authDB = new FileAuthDB(this.config);
+          break;
+        default:
+          this.authDB = new SQLAuthDB({
+            dbType: 'sqlite',
+            storage: 'authdb.sqlite'
+          });
+      }
     }
   }
 
@@ -259,7 +258,6 @@ class SaintPeter {
     return wrapAsync(async (req, res, next) => {
       try {
         let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
-        let groups = await this.authDB.getGroups();
         if (!('groups' in decodedToken)) {
           throw new Error('No groups in token');
         }
@@ -268,11 +266,13 @@ class SaintPeter {
             return next();
           }
         }
-        // the token might be outdated, try to fetch the groups against
-        let userGroups = await this.authDB.getUserGroups(decodedToken.username);
-        for (let tokenGroup of userGroups) {
-          if (groups.indexOf(tokenGroup) >= 0) {
-            return next();
+        // the token might be outdated, try to fetch groups from the db
+        if (this.authDB) {
+          let userGroups = await this.authDB.getUserGroups(decodedToken.username);
+          for (let tokenGroup of userGroups) {
+            if (groups.indexOf(tokenGroup) >= 0) {
+              return next();
+            }
           }
         }
         throw new Error('Forbidden');

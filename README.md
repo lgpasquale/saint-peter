@@ -51,15 +51,15 @@ that requires the db) to work. If saint-peter was not provided a `dbType`, you
 don't need to call this method.
 
 ### `allowUsers (users)`
-Returns a router that allows access only to given users
+Returns an express middleware that allows access only to given users
 - **users**: array of user names
 
 ### `allowGroups (groups)`
-Returns a router that allows access only to users belonging to given groups
+Returns an express middleware that allows access only to users belonging to given groups
 - **groups**: array of group names
 
 ### `requireAuthentication ()`
-Returns a router that allows access only to authenticated users
+Returns an express middleware that allows access only to authenticated users
 
 ### `defaultRouters (adminGroups = ['admin'])`
 Returns a router that handles the following requests at these relative paths:

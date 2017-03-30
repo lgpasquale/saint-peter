@@ -222,8 +222,7 @@ class SaintPeter {
    *
    */
   requireAuthentication () {
-    let router = express.Router();
-    router.use(wrapAsync(async (req, res, next) => {
+    return wrapAsync(async (req, res, next) => {
       try {
         await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
         next();
@@ -233,8 +232,7 @@ class SaintPeter {
           message: 'Forbidden'
         });
       }
-    }));
-    return router;
+    });
   }
 
   allowUsers (users) {

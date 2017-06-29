@@ -108,7 +108,7 @@ class SaintPeter {
 
   authenticate () {
     let router = express.Router();
-    router.use(bodyParser.json(), this.authenticateParsedRequest());
+    router.post('/', bodyParser.json(), this.authenticateParsedRequest());
     return router;
   }
 
@@ -166,7 +166,7 @@ class SaintPeter {
 
   renewToken () {
     let router = express.Router();
-    router.use(bodyParser.json(), this.renewTokenParsedRequest());
+    router.post('/', bodyParser.json(), this.renewTokenParsedRequest());
     return router;
   }
 
@@ -283,17 +283,32 @@ class SaintPeter {
     });
   }
 
+  getUsernames () {
+    let router = express.Router();
+    router.get('/', wrapAsync(async (req, res) => {
+      res.json(await this.authDB.getUsernames());
+    }));
+    return router;
+  }
+
   getUsers () {
     let router = express.Router();
-    router.use(wrapAsync(async (req, res) => {
-      res.json(await this.authDB.getUsers());
+    router.get('/', wrapAsync(async (req, res) => {
+      let success = true;
+      let users = {};
+      try {
+        users = await this.authDB.getUsers();
+      } catch (e) {
+        success = false;
+      }
+      res.status(success ? 200 : 409).json(users);
     }));
     return router;
   }
 
   getGroups () {
     let router = express.Router();
-    router.use(wrapAsync(async (req, res) => {
+    router.get('/', wrapAsync(async (req, res) => {
       res.json(await this.authDB.getGroups());
     }));
     return router;
@@ -301,7 +316,7 @@ class SaintPeter {
 
   addUser () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+    router.post('/', bodyParser.json(), wrapAsync(async (req, res) => {
       let success = true;
       try {
         success = await this.authDB.addUser(req.body.username, req.body.password);
@@ -318,10 +333,10 @@ class SaintPeter {
 
   deleteUser () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+    router.delete('/:username', wrapAsync(async (req, res) => {
       let success = true;
       try {
-        success = await this.authDB.deleteUser(req.body.username);
+        success = await this.authDB.deleteUser(req.params.username);
       } catch (e) {
         success = false;
         this.logger.error(e.message);
@@ -335,7 +350,7 @@ class SaintPeter {
 
   addGroup () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+    router.post('/', bodyParser.json(), wrapAsync(async (req, res) => {
       let success = await this.authDB.addGroup(req.body.group);
       res.status(success ? 200 : 409).json({
         success: success
@@ -346,8 +361,8 @@ class SaintPeter {
 
   deleteGroup () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let success = await this.authDB.deleteGroup(req.body.group);
+    router.delete('/:group', wrapAsync(async (req, res) => {
+      let success = await this.authDB.deleteGroup(req.params.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
@@ -357,8 +372,8 @@ class SaintPeter {
 
   addUserToGroup () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let success = await this.authDB.addUserToGroup(req.body.username, req.body.group);
+    router.post('/:username/groups', bodyParser.json(), wrapAsync(async (req, res) => {
+      let success = await this.authDB.addUserToGroup(req.params.username, req.body.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
@@ -368,8 +383,8 @@ class SaintPeter {
 
   removeUserFromGroup () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let success = await this.authDB.removeUserFromGroup(req.body.username, req.body.group);
+    router.delete('/:username/groups/:group', wrapAsync(async (req, res) => {
+      let success = await this.authDB.removeUserFromGroup(req.params.username, req.params.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
@@ -379,8 +394,8 @@ class SaintPeter {
 
   setUserPassword () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let username = req.body.username;
+    router.put('/:username/password', bodyParser.json(), wrapAsync(async (req, res) => {
+      let username = req.params.username;
       let oldPassword = req.body.oldPassword;
       let newPassword = req.body.newPassword;
       try {
@@ -416,8 +431,8 @@ class SaintPeter {
 
   resetUserPassword () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
-      let username = req.body.username;
+    router.post('/:username/reset-password', bodyParser.json(), wrapAsync(async (req, res) => {
+      let username = req.params.username;
       let password = req.body.password;
 
       let success = true;
@@ -435,16 +450,16 @@ class SaintPeter {
 
   setUserEmail () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+    router.put('/:username/email', bodyParser.json(), wrapAsync(async (req, res) => {
       let success = true;
       try {
         let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
-        if (decodedToken.username !== req.body.username) {
+        if (decodedToken.username !== req.params.username) {
           // the user making the request has to match the user whose password
           // we are trying to change
           throw new Error('Forbidden');
         }
-        await this.authDB.setUserEmail(req.body.username, req.body.email);
+        await this.authDB.setUserEmail(req.params.username, req.body.email);
       } catch (e) {
         success = false;
       }
@@ -455,50 +470,27 @@ class SaintPeter {
     return router;
   }
 
-  getUsersInfo () {
-    let router = express.Router();
-    router.use(wrapAsync(async (req, res) => {
-      let success = true;
-      let usersInfo = {};
-      try {
-        let users = await this.authDB.getUsers();
-        for (let username of users) {
-          usersInfo[username] = {};
-          usersInfo[username].username = username;
-          usersInfo[username].email = await this.authDB.getUserEmail(username);
-          usersInfo[username].firstName = await this.authDB.getUserFirstName(username);
-          usersInfo[username].lastName = await this.authDB.getUserLastName(username);
-          usersInfo[username].groups = await this.authDB.getUserGroups(username);
-        }
-      } catch (e) {
-        success = false;
-      }
-      res.status(success ? 200 : 409).json(usersInfo);
-    }));
-    return router;
-  }
-
   setUserInfo () {
     let router = express.Router();
-    router.use(bodyParser.json(), wrapAsync(async (req, res) => {
+    router.patch('/:username', bodyParser.json(), wrapAsync(async (req, res) => {
       let success = true;
-      let username = req.body.username;
+      let username = req.params.username;
       try {
-        if (username !== req.body.userInfo.username) {
-          await this.authDB.renameUser(username, req.body.userInfo.username);
-          username = req.body.userInfo.username;
+        if (username !== req.body.username) {
+          await this.authDB.renameUser(username, req.body.username);
+          username = req.body.username;
         }
-        if (req.body.userInfo.firstName) {
-          await this.authDB.setUserFirstName(username, req.body.userInfo.firstName);
+        if (req.body.firstName) {
+          await this.authDB.setUserFirstName(username, req.body.firstName);
         }
-        if (req.body.userInfo.lastName) {
-          await this.authDB.setUserLastName(username, req.body.userInfo.lastName);
+        if (req.body.lastName) {
+          await this.authDB.setUserLastName(username, req.body.lastName);
         }
-        if (req.body.userInfo.email) {
-          await this.authDB.setUserEmail(username, req.body.userInfo.email);
+        if (req.body.email) {
+          await this.authDB.setUserEmail(username, req.body.email);
         }
-        if (req.body.userInfo.groups) {
-          await this.authDB.setUserGroups(username, req.body.userInfo.groups);
+        if (req.body.groups) {
+          await this.authDB.setUserGroups(username, req.body.groups);
         }
       } catch (e) {
         success = false;
@@ -512,21 +504,21 @@ class SaintPeter {
 
   defaultRouters (adminGroups = ['admin']) {
     let router = express.Router();
-    router.post('/authenticate', this.authenticate());
-    router.post('/renew-token', this.renewToken());
-    router.post('/add-user', this.allowGroups(adminGroups), this.addUser());
-    router.post('/delete-user', this.allowGroups(adminGroups), this.deleteUser());
-    router.post('/add-group', this.allowGroups(adminGroups), this.addUser());
-    router.post('/delete-group', this.allowGroups(adminGroups), this.deleteUser());
-    router.post('/add-user-to-group', this.allowGroups(adminGroups), this.addUserToGroup());
-    router.post('/remove-user-from-group', this.allowGroups(adminGroups), this.removeUserFromGroup());
-    router.post('/set-user-email', this.setUserEmail());
-    router.post('/set-user-password', this.setUserPassword());
-    router.post('/reset-user-password', this.allowGroups(adminGroups), this.resetUserPassword());
-    router.post('/set-user-info', this.allowGroups(adminGroups), this.setUserInfo());
-    router.get('/get-users-info', this.allowGroups(adminGroups), this.getUsersInfo());
-    router.get('/get-users', this.allowGroups(adminGroups), this.getUsers());
-    router.get('/get-groups', this.allowGroups(adminGroups), this.getGroups());
+    router.use('/authenticate', this.authenticate());
+    router.use('/renew-token', this.renewToken());
+    router.use('/users', this.allowGroups(adminGroups), this.addUser());
+    router.use('/users', this.allowGroups(adminGroups), this.deleteUser());
+    router.use('/groups', this.allowGroups(adminGroups), this.addGroup());
+    router.use('/groups', this.allowGroups(adminGroups), this.deleteGroup());
+    router.use('/users', this.allowGroups(adminGroups), this.addUserToGroup());
+    router.use('/users', this.allowGroups(adminGroups), this.removeUserFromGroup());
+    router.use('/users', this.setUserEmail());
+    router.use('/users', this.setUserPassword());
+    router.use('/users', this.allowGroups(adminGroups), this.resetUserPassword());
+    router.use('/users', this.allowGroups(adminGroups), this.setUserInfo());
+    router.use('/users', this.allowGroups(adminGroups), this.getUsers());
+    router.use('/usernames', this.allowGroups(adminGroups), this.getUsernames());
+    router.use('/groups', this.allowGroups(adminGroups), this.getGroups());
     return router;
   }
 }

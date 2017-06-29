@@ -214,9 +214,19 @@ class SQLAuthDB {
     });
   }
 
-  async getUsers () {
+  async getUsernames () {
     let users = await this.User.findAll({attributes: ['username']});
     return users.map((user) => user.username);
+  }
+
+  async getUsers () {
+    let users = await this.User.findAll({
+      attributes: ['id', 'username', 'email', 'firstName', 'lastName']
+    });
+    for (let user of users) {
+      user.groups = await this.getUserGroups(user.username);
+    }
+    return users;
   }
 
   async getGroups () {

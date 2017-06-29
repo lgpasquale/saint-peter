@@ -79,8 +79,12 @@ class FileAuthDB {
     await writeJSONFile(this.filename, this.fileContents);
   }
 
-  async getUsers () {
+  async getUsernames () {
     return Object.keys(this.fileContents.users);
+  }
+
+  async getUsers () {
+    return this.fileContents.users;
   }
 
   async getGroups () {

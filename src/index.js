@@ -170,7 +170,7 @@ class SaintPeter {
 
   renewToken () {
     let router = express.Router();
-    router.post('/', bodyParser.json(), this.renewTokenParsedRequest());
+    router.get('/', bodyParser.json(), this.renewTokenParsedRequest());
     return router;
   }
 

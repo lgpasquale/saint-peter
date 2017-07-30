@@ -8,6 +8,9 @@
     "dev": "webpack -d --watch",
     "build": "webpack -p"
   },
+  "bin": {
+      "saint-peter": "src/server.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lgpasquale/saint-peter.git"
@@ -19,7 +22,8 @@
     "express": "^4.15.3",
     "jsonwebtoken": "^7.2.1",
     "sequelize": "^3.30.2",
-    "sqlite3": "^3.1.8"
+    "sqlite3": "^3.1.8",
+    "yargs": "^8.0.2"
   },
   "devDependencies": {
     "babel-core": "^6.22.1",

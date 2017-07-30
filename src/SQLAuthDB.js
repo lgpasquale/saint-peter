@@ -170,6 +170,7 @@ class SQLAuthDB {
       attributes: ['id', 'username', 'email', 'firstName', 'lastName'],
       where: {username: username}
     });
+    user = user.get();
     user.groups = await this.getUserGroups(username);
     return user;
   }
@@ -236,6 +237,7 @@ class SQLAuthDB {
     let users = await this.User.findAll({
       attributes: ['id', 'username', 'email', 'firstName', 'lastName']
     });
+    users = users.map((user) => user.get());
     for (let user of users) {
       user.groups = await this.getUserGroups(user.username);
     }

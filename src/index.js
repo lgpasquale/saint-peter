@@ -35,7 +35,10 @@ class SaintPeter {
     }
     // jwtSecret is mandatory (we don't want to provide a default one)
     if (!this.config.jwtSecret) {
-      throw new Error('No jwtSecret provided in config');
+      throw new Error('No jwtSecret provided');
+    }
+    if (!this.config.dbURI && !this.config.dbType) {
+      throw new Error('No db provided');
     }
     // fill in missing config parameters
     if (typeof this.config.defaultUsername === 'undefined') {
@@ -58,7 +61,9 @@ class SaintPeter {
       this.config.tokenIdleTimeout = Number(this.config.tokenIdleTimeout);
     }
     // instantiate the db backend
-    if (this.config.dbType) {
+    if (this.config.dbURI) {
+      this.authDB = new SQLAuthDB(this.config);
+    } else if (this.config.dbType) {
       switch (String(this.config.dbType)) {
         case 'sqlite':
         case 'mysql':
@@ -134,10 +139,7 @@ class SaintPeter {
         });
       }
 
-      let groups = await this.authDB.getUserGroups(username);
-      let email = await this.authDB.getUserEmail(username);
-      let firstName = await this.authDB.getUserFirstName(username);
-      let lastName = await this.authDB.getUserLastName(username);
+      let user = await this.authDB.getUser(username);
       let expirationDate = Math.floor(Date.now() / 1000) +
         this.config.tokenLifetime;
       let renewalExpirationDate = expirationDate +
@@ -146,19 +148,21 @@ class SaintPeter {
         exp: expirationDate,
         renewalExpirationDate: renewalExpirationDate,
         username: username,
-        groups: groups,
-        email: email,
-        firstName: firstName,
-        lastName: lastName
+        groups: user.groups,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        id: user.id
       }, this.config.jwtSecret, {algorithm: 'HS256'});
       res.json({
         success: true,
         token: token,
         username: username,
-        groups: groups,
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
+        groups: user.groups,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        id: user.id,
         tokenExpirationDate: expirationDate
       });
     });
@@ -181,10 +185,7 @@ class SaintPeter {
 
         let username = decodedOldToken.username;
         // we could get the groups from the token, but we take this chance toupdate them
-        let groups = await this.authDB.getUserGroups(username);
-        let email = await this.authDB.getUserEmail(username);
-        let firstName = await this.authDB.getUserFirstName(username);
-        let lastName = await this.authDB.getUserLastName(username);
+        let user = await this.authDB.getUser(username);
         let expirationDate = Math.floor(Date.now() / 1000) +
           this.config.tokenLifetime;
         let renewalExpirationDate = expirationDate +
@@ -193,20 +194,22 @@ class SaintPeter {
           exp: expirationDate,
           renewalExpirationDate: renewalExpirationDate,
           username: username,
-          groups: groups,
-          email: email,
-          firstName: firstName,
-          lastName: lastName
+          groups: user.groups,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          id: user.id
         }, this.config.jwtSecret, {algorithm: 'HS256'});
 
         res.json({
           success: true,
           token: token,
           username: username,
-          groups: groups,
-          email: email,
-          firstName: firstName,
-          lastName: lastName,
+          groups: user.groups,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          id: user.id,
           tokenExpirationDate: expirationDate
         });
       } catch (e) {
@@ -292,8 +295,7 @@ class SaintPeter {
   }
 
   getUsers () {
-    let router = express.Router();
-    router.get('/', wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = true;
       let users = {};
       try {
@@ -302,21 +304,30 @@ class SaintPeter {
         success = false;
       }
       res.status(success ? 200 : 409).json(users);
-    }));
-    return router;
+    });
+  }
+
+  getUser () {
+    return wrapAsync(async (req, res) => {
+      let success = true;
+      let user = {};
+      try {
+        user = await this.authDB.getUser(req.params.username);
+      } catch (e) {
+        success = false;
+      }
+      res.status(success ? 200 : 409).json(user);
+    });
   }
 
   getGroups () {
-    let router = express.Router();
-    router.get('/', wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       res.json(await this.authDB.getGroups());
-    }));
-    return router;
+    });
   }
 
   addUser () {
-    let router = express.Router();
-    router.post('/', bodyParser.json(), wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = true;
       try {
         success = await this.authDB.addUser(req.body.username, req.body.password);
@@ -327,13 +338,11 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   deleteUser () {
-    let router = express.Router();
-    router.delete('/:username', wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = true;
       try {
         success = await this.authDB.deleteUser(req.params.username);
@@ -344,57 +353,47 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   addGroup () {
-    let router = express.Router();
-    router.post('/', bodyParser.json(), wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = await this.authDB.addGroup(req.body.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   deleteGroup () {
-    let router = express.Router();
-    router.delete('/:group', wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = await this.authDB.deleteGroup(req.params.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   addUserToGroup () {
-    let router = express.Router();
-    router.post('/:username/groups', bodyParser.json(), wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = await this.authDB.addUserToGroup(req.params.username, req.body.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   removeUserFromGroup () {
-    let router = express.Router();
-    router.delete('/:username/groups/:group', wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = await this.authDB.removeUserFromGroup(req.params.username, req.params.group);
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   setUserPassword () {
-    let router = express.Router();
-    router.put('/:username/password', bodyParser.json(), wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let username = req.params.username;
       let oldPassword = req.body.oldPassword;
       let newPassword = req.body.newPassword;
@@ -425,13 +424,11 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   resetUserPassword () {
-    let router = express.Router();
-    router.post('/:username/reset-password', bodyParser.json(), wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let username = req.params.username;
       let password = req.body.password;
 
@@ -444,13 +441,11 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
   setUserEmail () {
-    let router = express.Router();
-    router.put('/:username/email', bodyParser.json(), wrapAsync(async (req, res) => {
+    return wrapAsync(async (req, res) => {
       let success = true;
       try {
         let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
@@ -466,13 +461,11 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
-    return router;
+    });
   }
 
-  setUserInfo () {
-    let router = express.Router();
-    router.patch('/:username', bodyParser.json(), wrapAsync(async (req, res) => {
+  updateUser () {
+    return wrapAsync(async (req, res) => {
       let success = true;
       let username = req.params.username;
       try {
@@ -498,7 +491,30 @@ class SaintPeter {
       res.status(success ? 200 : 409).json({
         success: success
       });
-    }));
+    });
+  }
+
+  users (adminGroups = ['admin']) {
+    let router = express.Router();
+    router.use('/', bodyParser.json());
+    router.post('/', this.allowGroups(adminGroups), this.addUser());
+    router.get('/', this.allowGroups(adminGroups), this.getUsers());
+    router.get('/:username', this.allowGroups(adminGroups), this.getUser());
+    router.delete('/:username', this.allowGroups(adminGroups), this.deleteUser());
+    router.patch('/:username', this.allowGroups(adminGroups), this.updateUser());
+    router.post('/:username/groups', this.allowGroups(adminGroups), this.addUserToGroup());
+    router.delete('/:username/groups/:group', this.allowGroups(adminGroups), this.removeUserFromGroup());
+    router.put('/:username/email', this.setUserEmail());
+    router.put('/:username/password', this.setUserPassword());
+    router.put('/:username/reset-password', this.allowGroups(adminGroups), this.resetUserPassword());
+    return router;
+  }
+
+  groups (adminGroups = ['admin']) {
+    let router = express.Router();
+    router.get('/', this.allowGroups(adminGroups), this.getGroups());
+    router.post('/', this.allowGroups(adminGroups), this.addGroup());
+    router.delete('/:group', this.allowGroups(adminGroups), this.deleteGroup());
     return router;
   }
 
@@ -506,19 +522,9 @@ class SaintPeter {
     let router = express.Router();
     router.use('/authenticate', this.authenticate());
     router.use('/renew-token', this.renewToken());
-    router.use('/users', this.allowGroups(adminGroups), this.addUser());
-    router.use('/users', this.allowGroups(adminGroups), this.deleteUser());
-    router.use('/groups', this.allowGroups(adminGroups), this.addGroup());
-    router.use('/groups', this.allowGroups(adminGroups), this.deleteGroup());
-    router.use('/users', this.allowGroups(adminGroups), this.addUserToGroup());
-    router.use('/users', this.allowGroups(adminGroups), this.removeUserFromGroup());
-    router.use('/users', this.setUserEmail());
-    router.use('/users', this.setUserPassword());
-    router.use('/users', this.allowGroups(adminGroups), this.resetUserPassword());
-    router.use('/users', this.allowGroups(adminGroups), this.setUserInfo());
-    router.use('/users', this.allowGroups(adminGroups), this.getUsers());
+    router.use('/users', this.users());
+    router.use('/groups', this.groups());
     router.use('/usernames', this.allowGroups(adminGroups), this.getUsernames());
-    router.use('/groups', this.allowGroups(adminGroups), this.getGroups());
     return router;
   }
 }

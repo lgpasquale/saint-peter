@@ -3,7 +3,9 @@ var PasswordHandler = require('./PasswordHandler');
 
 class SQLAuthDB {
   constructor (config) {
-    if (config.dbType === 'sqlite') {
+    if (config.dbURI) {
+      this.sequelize = new Sequelize(config.dbURI);
+    } else if (config.dbType === 'sqlite') {
       this.sequelize = new Sequelize(config.database, null, null, {
         dialect: 'sqlite',
         storage: config.storage || './authdb/authdb.sqlite',
@@ -159,6 +161,15 @@ class SQLAuthDB {
       where: {username: username}
     });
     return user.lastName;
+  }
+
+  async getUser (username) {
+    let user = await this.User.findOne({
+      attributes: ['id', 'username', 'email', 'firstName', 'lastName'],
+      where: {username: username}
+    });
+    user.groups = await this.getUserGroups(username);
+    return user;
   }
 
   async setUserGroups (username, groups) {

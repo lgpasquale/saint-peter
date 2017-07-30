@@ -4,7 +4,9 @@ var PasswordHandler = require('./PasswordHandler');
 class SQLAuthDB {
   constructor (config) {
     if (config.dbURI) {
-      this.sequelize = new Sequelize(config.dbURI);
+      this.sequelize = new Sequelize(config.dbURI, {
+        logging: false
+      });
     } else if (config.dbType === 'sqlite') {
       this.sequelize = new Sequelize(config.database, null, null, {
         dialect: 'sqlite',

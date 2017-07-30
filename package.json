@@ -9,7 +9,7 @@
     "build": "webpack -p"
   },
   "bin": {
-      "saint-peter": "src/server.js"
+    "saint-peter": "src/server.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.17.2",
+    "cors": "^2.8.4",
     "express": "^4.15.3",
     "jsonwebtoken": "^7.2.1",
     "sequelize": "^3.30.2",

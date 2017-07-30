@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 var express = require('express');
+var cors = require('cors');
 // var bunyan = require('bunyan');
 var SaintPeter = require('./index');
 
@@ -51,9 +52,12 @@ let log = console;
 
 var app = express();
 
+// Enable CORS
+app.use(cors());
+
 // Log all requests
 app.use('/', function (req, res, next) {
-  log.info({'req': req});
+  log.info('[' + Date() + '] ' + req.method + ' ' + req.url + ' ' + req.ip);
   next();
 });
 

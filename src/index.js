@@ -224,10 +224,10 @@ class SaintPeter {
   /**
    *
    */
-  requireAuthentication () {
+  static requireAuthentication (jwtSecret) {
     return wrapAsync(async (req, res, next) => {
       try {
-        await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
+        await jwt.decodeTokenHeader(req, jwtSecret, jwtVerifyOptions);
         next();
       } catch (e) {
         res.status(403).json({
@@ -238,10 +238,10 @@ class SaintPeter {
     });
   }
 
-  allowUsers (users) {
+  static allowUsers (users, jwtSecret) {
     return wrapAsync(async (req, res, next) => {
       try {
-        let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
+        let decodedToken = await jwt.decodeTokenHeader(req, jwtSecret, jwtVerifyOptions);
         if (users.indexOf(decodedToken.username) < 0) {
           throw new Error('Forbidden');
         }
@@ -255,10 +255,10 @@ class SaintPeter {
     });
   }
 
-  allowGroups (groups) {
+  static allowGroups (groups) {
     return wrapAsync(async (req, res, next) => {
       try {
-        let decodedToken = await jwt.decodeTokenHeader(req, this.config.jwtSecret, jwtVerifyOptions);
+        let decodedToken = await jwt.decodeTokenHeader(req, jwtSecret, jwtVerifyOptions);
         if (!('groups' in decodedToken)) {
           throw new Error('No groups in token');
         }
@@ -497,24 +497,37 @@ class SaintPeter {
   users (adminGroups = ['admin']) {
     let router = express.Router();
     router.use('/', bodyParser.json());
-    router.post('/', this.allowGroups(adminGroups), this.addUser());
-    router.get('/', this.allowGroups(adminGroups), this.getUsers());
-    router.get('/:username', this.allowGroups(adminGroups), this.getUser());
-    router.delete('/:username', this.allowGroups(adminGroups), this.deleteUser());
-    router.patch('/:username', this.allowGroups(adminGroups), this.updateUser());
-    router.post('/:username/groups', this.allowGroups(adminGroups), this.addUserToGroup());
-    router.delete('/:username/groups/:group', this.allowGroups(adminGroups), this.removeUserFromGroup());
+    if (this.config.userListVisibility === 'public') {
+      router.get('/', this.getUsers());
+    } else if (this.config.userListVisibility === 'authenticated') {
+      router.get('/', SaintPeter.requireAuthentication(this.config.jwtSecret), this.getUsers());
+    } else {
+      router.get('/', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.getUsers());
+    }
+    router.post('/', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.addUser());
+    router.get('/:username', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.getUser());
+    router.delete('/:username', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.deleteUser());
+    router.patch('/:username', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.updateUser());
+    router.post('/:username/groups', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.addUserToGroup());
+    router.delete('/:username/groups/:group', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.removeUserFromGroup());
     router.put('/:username/email', this.setUserEmail());
     router.put('/:username/password', this.setUserPassword());
-    router.put('/:username/reset-password', this.allowGroups(adminGroups), this.resetUserPassword());
+    router.put('/:username/reset-password', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.resetUserPassword());
     return router;
   }
 
   groups (adminGroups = ['admin']) {
     let router = express.Router();
-    router.get('/', this.allowGroups(adminGroups), this.getGroups());
-    router.post('/', this.allowGroups(adminGroups), this.addGroup());
-    router.delete('/:group', this.allowGroups(adminGroups), this.deleteGroup());
+    if (this.config.groupListVisibility === 'public') {
+      router.get('/', this.getGroups());
+    } else if (this.config.userListVisibility === 'authenticated') {
+      router.get('/', SaintPeter.requireAuthentication(this.config.jwtSecret), this.getGroups());
+    } else {
+      router.get('/', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.getGroups());
+    }
+    router.get('/', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.getGroups());
+    router.post('/', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.addGroup());
+    router.delete('/:group', SaintPeter.allowGroups(adminGroups, this.config.jwtSecret), this.deleteGroup());
     return router;
   }
 
@@ -524,7 +537,7 @@ class SaintPeter {
     router.use('/renew-token', this.renewToken());
     router.use('/users', this.users());
     router.use('/groups', this.groups());
-    router.use('/usernames', this.allowGroups(adminGroups), this.getUsernames());
+    router.use('/usernames', SaintPeter.allowGroups(adminGroups, this.config.jwtToken), this.getUsernames());
     return router;
   }
 }

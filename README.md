@@ -62,6 +62,8 @@ The constructor takes two arguments:
   - defaultPassword: string, if no user is found in the database, one is created with this password (defaults to `admin`)
   - tokenLifetime: integer, number of seconds before a generated token expires
   - tokenIdleTimeout: integer, number of seconds a token can be renewed after it's's expired
+  - userListVisibility: one of `public`, `authenticated`, `admin`; who can access (GET) the user list
+  - groupListVisibility: one of `public`, `authenticated`, `admin`; who can access (GET) the group list
 - **logger**: a logger that should provide at least two methods: `error` and `info`
 
 #### `initializeDB ()`
@@ -71,16 +73,19 @@ This method needs to be called in order for authentication (or anything else
 that requires the db) to work. If saint-peter was not provided a `dbType`, you
 don't need to call this method.
 
-#### `allowUsers (users)`
+#### `static allowUsers (users, jwtSecret)`
 Returns an express middleware that allows access only to given users
 - **users**: array of user names
+- **jwtSecret**: secret used to decode the JSON Web Token
 
-#### `allowGroups (groups)`
+#### `static allowGroups (groups, jwtSecret)`
 Returns an express middleware that allows access only to users belonging to given groups
 - **groups**: array of group names
+- **jwtSecret**: secret used to decode the JSON Web Token
 
-#### `requireAuthentication ()`
+#### `static requireAuthentication (jwtSecret)`
 Returns an express middleware that allows access only to authenticated users
+- **jwtSecret**: secret used to decode the JSON Web Token
 
 #### `defaultRouters (adminGroups = ['admin'])`
 Returns a router that handles the following requests at these relative paths:

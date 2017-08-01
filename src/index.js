@@ -255,7 +255,7 @@ class SaintPeter {
     });
   }
 
-  static allowGroups (groups) {
+  static allowGroups (groups, jwtSecret) {
     return wrapAsync(async (req, res, next) => {
       try {
         let decodedToken = await jwt.decodeTokenHeader(req, jwtSecret, jwtVerifyOptions);

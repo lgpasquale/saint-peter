@@ -23,6 +23,11 @@ const argv = require('yargs')
   .option('secret', {
     describe: 'secret used to generate the JSON Web Token'
   })
+  .option('root-path', {
+    alias: 'r',
+    describe: 'root path; the API will be available as subpaths of this',
+    default: '/'
+  })
   .help()
   .argv;
 
@@ -56,13 +61,13 @@ var app = express();
 app.use(cors());
 
 // Log all requests
-app.use('/', function (req, res, next) {
+app.use(argv.rootPath, function (req, res, next) {
   log.info('[' + Date() + '] ' + req.method + ' ' + req.url + ' ' + req.ip);
   next();
 });
 
 // Setup default routers
-app.use('/', saintPeter.defaultRouters(['admin']));
+app.use(argv.rootPath, saintPeter.defaultRouters(['admin']));
 
 log.info('Initializing DB...');
 saintPeter.initializeDB().then(() =>

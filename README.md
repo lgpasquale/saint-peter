@@ -20,6 +20,17 @@ You can use any db supported by [sequelize](http://docs.sequelizejs.com) (e.g. `
 The section `defaultRouters` below describes all the HTTP resources provided by
 this server.
 
+The binary accepts the following command line options:
+```
+Options:
+  --address, -a    address the server will listen on        [default: "0.0.0.0"]
+  --port, -p       port the server will listen on                [default: 3000]
+  --db             database URL                [default: "sqlite://auth.sqlite"]
+  --secret         secret used to generate the JSON Web Token
+  --root-path, -r  root path; the API will be available as subpaths of this
+                                                                  [default: "/"]
+```
+
 ## Library
 
 In order to use this package as a library, instead, you need to require

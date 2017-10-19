@@ -27,6 +27,7 @@ Options:
   --port, -p       port the server will listen on                [default: 3000]
   --db             database URL                [default: "sqlite://auth.sqlite"]
   --secret         secret used to generate the JSON Web Token
+  --issuer, --iss  token issuer (iss field of the jwt)             [default: ""]
   --root-path, -r  root path; the API will be available as subpaths of this
                                                                   [default: "/"]
 ```
@@ -75,6 +76,7 @@ The constructor takes two arguments:
   - tokenIdleTimeout: integer, number of seconds a token can be renewed after it's's expired
   - userListVisibility: one of `public`, `authenticated`, `admin`; who can access (GET) the user list
   - groupListVisibility: one of `public`, `authenticated`, `admin`; who can access (GET) the group list
+  - issuer: `iss` field to be written in the tokens
 - **logger**: a logger that should provide at least two methods: `error` and `info`
 
 #### `initializeDB ()`

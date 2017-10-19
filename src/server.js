@@ -23,6 +23,11 @@ const argv = require('yargs')
   .option('secret', {
     describe: 'secret used to generate the JSON Web Token'
   })
+  .option('issuer', {
+    alias: 'iss',
+    describe: 'token issuer (iss field of the jwt)',
+    default: ''
+  })
   .option('root-path', {
     alias: 'r',
     describe: 'root path; the API will be available as subpaths of this',
@@ -33,7 +38,8 @@ const argv = require('yargs')
 
 var saintPeterOptions = {
   jwtSecret: argv.secret,
-  dbURI: argv.db
+  dbURI: argv.db,
+  issuer: argv.issuer
 };
 
 let saintPeter = new SaintPeter(saintPeterOptions);

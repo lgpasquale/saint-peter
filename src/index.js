@@ -60,6 +60,10 @@ class SaintPeter {
     } else {
       this.config.tokenIdleTimeout = Number(this.config.tokenIdleTimeout);
     }
+    if (typeof this.config.issuer === 'undefined') {
+      this.config.issuer = '';
+    }
+
     // instantiate the db backend
     if (this.config.dbURI) {
       this.authDB = new SQLAuthDB(this.config);
@@ -152,7 +156,8 @@ class SaintPeter {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        id: user.id
+        id: user.id,
+        iss: this.config.issuer
       }, this.config.jwtSecret, {algorithm: 'HS256'});
       res.json({
         success: true,
@@ -198,7 +203,8 @@ class SaintPeter {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          id: user.id
+          id: user.id,
+          iss: this.config.issuer
         }, this.config.jwtSecret, {algorithm: 'HS256'});
 
         res.json({

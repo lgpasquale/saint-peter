@@ -524,6 +524,7 @@ class SaintPeter {
 
   groups (adminGroups = ['admin']) {
     let router = express.Router();
+    router.use('/', bodyParser.json());
     if (this.config.groupListVisibility === 'public') {
       router.get('/', this.getGroups());
     } else if (this.config.userListVisibility === 'authenticated') {

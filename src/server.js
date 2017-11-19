@@ -33,13 +33,39 @@ const argv = require('yargs')
     describe: 'root path; the API will be available as subpaths of this',
     default: '/'
   })
+  .option('token-lifetime', {
+    describe: 'token lifetime in seconds',
+    default: 3600
+  })
+  .option('token-idle-timeout', {
+    describe: 'how long (in seconds) after a token has expired can it be ' +
+      'renewed without having to authenticate again',
+    default: 3600 * 24
+  })
+  .option('default-username', {
+    describe: 'user created if no user is found',
+    default: 'admin'
+  })
+  .option('default-password', {
+    describe: 'password assigned to the default user',
+    default: 'admin'
+  })
+  .option('default-group', {
+    describe: 'group created if no group is found',
+    default: 'admin'
+  })
   .help()
   .argv;
 
 var saintPeterOptions = {
   jwtSecret: argv.secret,
   dbURI: argv.db,
-  issuer: argv.issuer
+  issuer: argv.issuer,
+  tokenLifetime: argv.tokenLifetime,
+  tokenIdleTimeout: argv.tokenIdleTimeout,
+  defaultUsername: argv.defaultUsername,
+  defaultPassword: argv.defaultPassword,
+  defaultGroup: argv.defaultGroup
 };
 
 let saintPeter = new SaintPeter(saintPeterOptions);

@@ -23,13 +23,20 @@ this server.
 The binary accepts the following command line options:
 ```
 Options:
-  --address, -a    address the server will listen on        [default: "0.0.0.0"]
-  --port, -p       port the server will listen on                [default: 3000]
-  --db             database URL                [default: "sqlite://auth.sqlite"]
-  --secret         secret used to generate the JSON Web Token
-  --issuer, --iss  token issuer (iss field of the jwt)             [default: ""]
-  --root-path, -r  root path; the API will be available as subpaths of this
+  --address, -a         address the server will listen on   [default: "0.0.0.0"]
+  --port, -p            port the server will listen on           [default: 3000]
+  --db                  database URL           [default: "sqlite://auth.sqlite"]
+  --secret              secret used to generate the JSON Web Token
+  --issuer, --iss       token issuer (iss field of the jwt)        [default: ""]
+  --root-path, -r       root path; the API will be available as subpaths of this
                                                                   [default: "/"]
+  --token-lifetime      token lifetime in seconds                [default: 3600]
+  --token-idle-timeout  how long (in seconds) after a token has expired can it
+                        be renewed without having to authenticate again
+                                                                [default: 86400]
+  --default-username    user created if no user is found      [default: "admin"]
+  --default-password    password assigned to the default user [default: "admin"]
+  --default-group       group created if no group is found    [default: "admin"]
 ```
 
 ## Library

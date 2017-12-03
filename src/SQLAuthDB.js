@@ -272,6 +272,9 @@ class SQLAuthDB {
     if (!user) {
       return false;
     }
+    await this.UserGroups.destroy({
+      where: {username: username}
+    });
     await this.User.destroy({
       where: {id: user.id}
     });

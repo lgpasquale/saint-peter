@@ -5,12 +5,14 @@ class SQLAuthDB {
   constructor (config) {
     if (config.dbURI) {
       this.sequelize = new Sequelize(config.dbURI, {
+        operatorsAliases: false,
         logging: false
       });
     } else if (config.dbType === 'sqlite') {
       this.sequelize = new Sequelize(config.database, null, null, {
         dialect: 'sqlite',
         storage: config.storage || './authdb/authdb.sqlite',
+        operatorsAliases: false,
         logging: false
       });
     } else {
@@ -21,6 +23,7 @@ class SQLAuthDB {
           dialect: config.dbType || 'mysql',
           host: config.host || 'localhost',
           port: config.port || '3306',
+          operatorsAliases: false,
           logging: false
         }
       );
